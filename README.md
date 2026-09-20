@@ -1,5 +1,81 @@
 ## Overview
+# 🍽️ FoodHub — Connected Food Sharing & Community Platform
 
+> **Turning surplus food into meaningful connections.**
+
+FoodHub is a modern, full-stack food-sharing platform designed to connect people and organizations around food donation, redistribution, partnerships, and community impact.
+
+The platform brings different participants into one connected ecosystem — enabling food donors, employees, businesses, partners, and administrators to collaborate through dedicated role-based experiences.
+
+---
+
+## ✨ Why FoodHub?
+
+Every day, usable food can go to waste while communities face food insecurity.
+
+**FoodHub bridges that gap through technology.**
+
+Instead of treating food donation as a simple form submission, FoodHub provides a complete digital workflow for:
+
+**Donate → Discover → Connect → Coordinate → Track → Impact**
+
+The goal is to make food sharing more organized, transparent, accessible, and scalable.
+
+---
+
+## 🚀 Core Platform
+
+FoodHub provides dedicated experiences for multiple types of users:
+
+| Role | Purpose |
+|---|---|
+| 🧑‍🤝‍🧑 Donor | Share and manage food donations |
+| 👨‍💼 Employee | Coordinate platform operations |
+| 🏪 Business | Participate in food-sharing partnerships |
+| 🤝 Partner | Support redistribution and community activities |
+| 🛡️ Admin | Manage and monitor the platform |
+| 🌐 Platform | Centralized ecosystem and platform-level functionality |
+
+---
+
+## 🎯 Key Features
+
+### 🍱 Food Donation
+- Create and manage food donations
+- Track donation information
+- Support organized food redistribution
+- Role-specific donation workflows
+
+### 🔐 Authentication
+- Email-based authentication
+- OTP authentication flow
+- Anonymous user support
+- Protected routes
+- Authentication-aware navigation
+- Secure authorization checks
+
+### 📊 Role-Based Dashboards
+
+Each user type gets a dedicated experience rather than a generic dashboard.
+
+```text
+                 ┌──────────────────┐
+                 │     FoodHub      │
+                 └────────┬─────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        │                 │                 │
+      Donor            Business          Partner
+        │                 │                 │
+        └─────────────────┼─────────────────┘
+                          │
+                    ┌─────┴─────┐
+                    │  Platform │
+                    └─────┬─────┘
+                          │
+                  ┌───────┴───────┐
+                  │               │
+               Employee         Admin
 This project uses the following tech stack:
 - Vite
 - Typescript
