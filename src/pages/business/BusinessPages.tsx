@@ -15,6 +15,7 @@ import {
 } from "./businessStore";
 import {
   Award,
+  ArrowRight,
   BarChart3,
   Bell,
   Building2,

@@ -55,6 +55,16 @@ function resolveRedirectAfterAuth(
   return fallback;
 }
 
+function getAuthErrorMessage(error: unknown, mode: "signIn" | "signUp") {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("InvalidAccountId")) {
+    return mode === "signIn"
+      ? "No account was found for this email. Register first or check the email address."
+      : "This account could not be created. Please check the email address and try again.";
+  }
+  return message || "Authentication failed. Please check your details and try again.";
+}
+
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const completeRegistration = useMutation(api.mutations.users.completeRegistration);
@@ -71,6 +81,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [selectedRole, setSelectedRole] = useState("user");
   const appliedRedirectRole = useRef(false);
   const manualRedirect = useRef(false);
+  const pendingRegistrationRole = useRef<string | null>(null);
   const registrationFormRef = useRef<HTMLFormElement>(null);
 
   const handleGoogleSignIn = async () => {
@@ -99,6 +110,15 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   useEffect(() => {
+    if (
+      pendingRegistrationRole.current &&
+      user?.role === pendingRegistrationRole.current
+    ) {
+      const role = pendingRegistrationRole.current;
+      pendingRegistrationRole.current = null;
+      navigate(dashboardForRole(role, redirect));
+      return;
+    }
     if (!authLoading && isAuthenticated && !manualRedirect.current) {
       const savedRegistration = sessionStorage.getItem("foodhub_registration");
       if (savedRegistration && !appliedRedirectRole.current) {
@@ -117,9 +137,15 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    const isRegistering = mode === "signUp";
+    if (isRegistering) {
+      // Keep the auth effect from routing before the selected role is saved.
+      manualRedirect.current = true;
+    }
     try {
       const formData = new FormData(event.currentTarget);
       formData.set("flow", mode);
+      formData.set("email", String(formData.get("email") || "").trim().toLowerCase());
       await signIn("password", formData);
       if (mode === "signUp") {
         await completeRegistration({
@@ -128,19 +154,19 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           address: String(formData.get("address") || ""),
           role: selectedRole as "user" | "business" | "employee" | "biogas",
         });
-        manualRedirect.current = true;
-        navigate(dashboardForRole(selectedRole, redirect));
+        pendingRegistrationRole.current = selectedRole;
+        if (user?.role === selectedRole) {
+          pendingRegistrationRole.current = null;
+          navigate(dashboardForRole(selectedRole, redirect));
+        }
       } else {
-        manualRedirect.current = true;
-        navigate(dashboardForRole(user?.role, redirect));
+        // The auth session resolves before the user profile query refreshes.
+        // Let the effect above redirect once the current role is available.
       }
     } catch (error) {
       console.error("Password authentication error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Authentication failed. Please check your details and try again.",
-      );
+      setError(getAuthErrorMessage(error, mode));
+      manualRedirect.current = false;
       setIsLoading(false);
     }
   };

@@ -21,6 +21,30 @@ export const completeRegistration = mutation({
       role: args.role,
       verificationStatus: "pending",
     });
+    if (args.role === "employee") {
+      await ctx.db.insert("employees", {
+        userId,
+        employeeId: `EMP-${String(Date.now()).slice(-6)}`,
+        phone: args.phone,
+        status: "active",
+        totalDeliveries: 0,
+        rating: 5,
+        joinedAt: Date.now(),
+      });
+    }
+    if (args.role === "biogas") {
+      await ctx.db.insert("biogasPartners", {
+        userId,
+        partnerName: args.name,
+        partnerType: "biogas",
+        capacityKgPerWeek: 1000,
+        phone: args.phone,
+        address: args.address,
+        verificationStatus: "pending",
+        totalCollectedKg: 0,
+        createdAt: Date.now(),
+      });
+    }
     return { success: true };
   },
 });

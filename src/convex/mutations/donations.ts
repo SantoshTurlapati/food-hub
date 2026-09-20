@@ -106,6 +106,37 @@ export const assignEmployee = mutation({
   },
 });
 
+// Select a verified receiving organization after AI matching.
+export const selectBusiness = mutation({
+  args: {
+    donationId: v.id("donations"),
+    businessId: v.id("businesses"),
+    matchScore: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const donation = await ctx.db.get(args.donationId);
+    const business = await ctx.db.get(args.businessId);
+    if (!donation || donation.donorId !== userId) throw new Error("Donation not found");
+    if (!business || business.verificationStatus !== "verified") throw new Error("Receiving organization is not verified");
+    const now = Date.now();
+    await ctx.db.patch(args.donationId, {
+      assignedBusinessId: args.businessId,
+      status: "accepted",
+      updatedAt: now,
+    });
+    await ctx.db.insert("donationTracking", {
+      donationId: args.donationId,
+      status: "accepted",
+      updatedBy: userId,
+      note: `AI match selected: ${business.businessName} (${args.matchScore}% match)`,
+      timestamp: now,
+    });
+    return { success: true };
+  },
+});
+
 // Cancel donation
 export const cancel = mutation({
   args: { donationId: v.id("donations"), note: v.optional(v.string()) },

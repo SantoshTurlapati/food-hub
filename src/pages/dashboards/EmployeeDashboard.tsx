@@ -38,6 +38,7 @@ import {
   Star,
   Target,
   Timer,
+  TrendingUp,
   Truck,
   Users,
   X,

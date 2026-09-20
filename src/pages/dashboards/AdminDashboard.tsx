@@ -111,11 +111,11 @@ function SectionTitle({
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const users = useQuery(api.mutations.users.getAllUsers) || [];
-  const employees = useQuery(api.mutations.employees.list) || [];
-  const businesses = useQuery(api.mutations.businesses.list) || [];
-  const donations = useQuery(api.mutations.donations.list) || [];
-  const partners = useQuery(api.mutations.biogas.list) || [];
+  const users = (useQuery(api.mutations.users.getAllUsers) || []) as any[];
+  const employees = (useQuery(api.mutations.employees.list) || []) as any[];
+  const businesses = (useQuery(api.mutations.businesses.list) || []) as any[];
+  const donations = (useQuery(api.mutations.donations.list) || []) as any[];
+  const partners = (useQuery(api.mutations.biogas.list) || []) as any[];
   const [range, setRange] = useState("30 days");
   const [search, setSearch] = useState("");
 
@@ -140,20 +140,20 @@ export default function AdminDashboard() {
     0,
   );
   const userById = useMemo(
-    () => new Map(users.map((entry) => [entry._id, entry])),
+    () => new Map<string, any>(users.map((entry: any) => [entry._id, entry])),
     [users],
   );
   const employeeById = useMemo(
-    () => new Map(employees.map((entry) => [entry._id, entry])),
+    () => new Map<string, any>(employees.map((entry: any) => [entry._id, entry])),
     [employees],
   );
   const businessByUser = useMemo(
-    () => new Map(businesses.map((entry) => [entry.userId, entry])),
+    () => new Map<string, any>(businesses.map((entry: any) => [entry.userId, entry])),
     [businesses],
   );
   const visibleDonations = donations
     .filter((donation) => {
-      const donor = userById.get(donation.donorId);
+      const donor = userById.get(donation.donorId) as any;
       return (
         !search ||
         donation.foodName.toLowerCase().includes(search.toLowerCase()) ||
@@ -402,10 +402,10 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {visibleDonations.map((donation) => {
-                const donor = userById.get(donation.donorId);
-                const business = businessByUser.get(donation.donorId);
+                const donor = userById.get(donation.donorId) as any;
+                const business = businessByUser.get(donation.donorId) as any;
                 const employee = donation.assignedEmployeeId
-                  ? employeeById.get(donation.assignedEmployeeId)
+                  ? (employeeById.get(donation.assignedEmployeeId) as any)
                   : undefined;
                 return (
                   <tr

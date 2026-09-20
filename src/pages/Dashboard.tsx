@@ -13,6 +13,7 @@ const AdminDashboard = lazy(() => import("./dashboards/AdminDashboard"));
 const BiogasDashboard = lazy(() => import("./dashboards/BiogasDashboard"));
 const UserDonations = lazy(() => import("./dashboards/UserDonations"));
 const CreateDonation = lazy(() => import("./dashboards/CreateDonation"));
+const DonationMatching = lazy(() => import("./dashboards/DonationMatching"));
 const Tracking = lazy(() => import("./dashboards/Tracking"));
 const Notifications = lazy(() => import("./dashboards/Notifications"));
 const ProfileSettings = lazy(() => import("./dashboards/ProfileSettings"));
@@ -55,7 +56,11 @@ const roleRedirects: Record<UserRole, string> = {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const role = (user?.role as UserRole) || "user";
+  const role = user?.role as UserRole | undefined;
+
+  if (!role) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <DashboardLayout>
@@ -68,7 +73,7 @@ export default function Dashboard() {
             role === "business" ? <Navigate to="/business/dashboard" replace /> :
             role === "admin" ? <Navigate to="/admin/dashboard" replace /> :
             role === "biogas" ? <Navigate to="/partner/dashboard" replace /> :
-            <UserDashboard />
+            <Navigate to="/auth" replace />
           } />
 
           {/* ─── Shared routes ─── */}
@@ -80,6 +85,7 @@ export default function Dashboard() {
             <UserDonations />
           } />
           <Route path="create-donation" element={<CreateDonation />} />
+          <Route path="matching/:id" element={<DonationMatching />} />
 
           {/* ─── Employee routes ─── */}
           <Route path="requests" element={

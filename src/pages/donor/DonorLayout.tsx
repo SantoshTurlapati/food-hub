@@ -6,6 +6,7 @@ import { Bell, ChevronLeft, ChevronRight, CircleHelp, Heart, Home, Leaf, LogOut,
 
 const navItems = [
   ["Dashboard", "/donor/dashboard", Home],
+  ["AI Matching & Map", "/donor/ai-matching", Sparkles],
   ["Donate Food", "/donor/donate", Heart],
   ["My Donations", "/donor/donations", Package],
   ["Active Donations", "/donor/donations/active", MapPin],

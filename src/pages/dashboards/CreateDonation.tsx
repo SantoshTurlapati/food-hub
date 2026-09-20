@@ -43,7 +43,7 @@ export default function CreateDonation() {
     }
     setIsSubmitting(true);
     try {
-      await createDonation({
+      const result = await createDonation({
         foodName: form.foodName,
         foodCategory: form.foodCategory as "cooked" | "raw" | "packaged" | "bakery" | "dairy" | "produce" | "other",
         quantity: form.quantity,
@@ -60,8 +60,8 @@ export default function CreateDonation() {
         safetyDeclaration: safetyDeclared,
         donorType: "user",
       });
-      toast.success("Donation created successfully! A collection agent will be notified.");
-      navigate("/dashboard/donations");
+      toast.success("Donation created. Find the best receiving organization next.");
+      navigate(`/dashboard/matching/${result.donationId}`);
     } catch (error) {
       toast.error("Failed to create donation. Please try again.");
     } finally {
