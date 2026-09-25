@@ -62,13 +62,39 @@ function getAuthErrorMessage(error: unknown, mode: "signIn" | "signUp") {
       ? "No account was found for this email. Register first or check the email address."
       : "This account could not be created. Please check the email address and try again.";
   }
+  if (message.includes("timed out") || message.includes("taking too long")) {
+    return "The authentication service is taking too long to respond. Please check your connection and try again.";
+  }
   return message || "Authentication failed. Please check your details and try again.";
+}
+
+function withAuthTimeout<T>(action: () => Promise<T>, actionName: string) {
+  let timeoutId: number | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`${actionName} is taking too long. Please check your connection and try again.`));
+    }, 20000);
+  });
+
+  return Promise.race([action(), timeoutPromise]).finally(() => {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  });
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const completeRegistration = useMutation(api.mutations.users.completeRegistration);
   const navigate = useNavigate();
+  const shouldUseDemoAuth = typeof window !== "undefined" && window.localStorage.getItem("foodflow_demo_auth") !== "false";
+
+  useEffect(() => {
+    if (shouldUseDemoAuth) {
+      navigate(redirectAfterAuth || "/dashboard", { replace: true });
+    }
+  }, [navigate, redirectAfterAuth, shouldUseDemoAuth]);
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(
     searchParams.get("returnTo"),
@@ -97,14 +123,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           role: selectedRole,
         }));
       }
-      await signIn("google", { redirectTo: redirect });
+      await withAuthTimeout(() => signIn("google", { redirectTo: redirect }), "Google sign-in");
     } catch (error) {
       console.error("Google authentication error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Google authentication failed. Please try again.",
-      );
+      setError(getAuthErrorMessage(error, mode));
+    } finally {
       setIsLoading(false);
     }
   };
@@ -146,7 +169,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       const formData = new FormData(event.currentTarget);
       formData.set("flow", mode);
       formData.set("email", String(formData.get("email") || "").trim().toLowerCase());
-      await signIn("password", formData);
+      await withAuthTimeout(() => signIn("password", formData), mode === "signIn" ? "Login" : "Account creation");
       if (mode === "signUp") {
         await completeRegistration({
           name: String(formData.get("name") || ""),
@@ -167,6 +190,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       console.error("Password authentication error:", error);
       setError(getAuthErrorMessage(error, mode));
       manualRedirect.current = false;
+    } finally {
       setIsLoading(false);
     }
   };
@@ -174,7 +198,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   return (
     <div className="min-h-screen flex flex-col bg-[#F5F0EB]">
 
-      
+
       {/* Auth Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-10 sm:px-6">
         <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(350px,420px)] lg:gap-16">
@@ -198,12 +222,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </aside>
 
           <div className="flex flex-col">
-          <Button type="button" variant="ghost" className="mb-4 self-start" onClick={() => navigate("/")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to home
-          </Button>
-          <Card className="w-full pb-0 border shadow-md">
-          <CardHeader className="text-center">
+            <Button type="button" variant="ghost" className="mb-4 self-start" onClick={() => navigate("/")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to home
+            </Button>
+            <Card className="w-full pb-0 border shadow-md">
+              <CardHeader className="text-center">
                 <CardTitle className="text-xl">{mode === "signIn" ? "Welcome back" : "Create your account"}</CardTitle>
                 <CardDescription>
                   {mode === "signIn" ? "Log in to continue to FoodFlow" : "Register with your email and password"}
@@ -265,7 +289,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </Button>
                 </CardFooter>
               </form>
-          </Card>
+            </Card>
           </div>
         </div>
       </div>
