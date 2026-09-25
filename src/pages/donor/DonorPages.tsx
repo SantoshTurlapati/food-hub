@@ -49,6 +49,7 @@ import {
   User,
   XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 const steps = [
   "Donation Submitted",
@@ -132,17 +133,17 @@ function Timeline({ donation }: { donation: DonorDonation }) {
     donation.status === "cancelled"
       ? 0
       : Math.max(
-          0,
-          [
-            "pending",
-            "accepted",
-            "assigned",
-            "scheduled",
-            "picked_up",
-            "delivered",
-            "completed",
-          ].indexOf(donation.status),
-        );
+        0,
+        [
+          "pending",
+          "accepted",
+          "assigned",
+          "scheduled",
+          "picked_up",
+          "delivered",
+          "completed",
+        ].indexOf(donation.status),
+      );
   return (
     <div className="space-y-3">
       {steps.map((step, index) => (
@@ -482,8 +483,8 @@ export function DonatePage() {
                   type={
                     type ||
                     (key === "servings" ||
-                    key === "quantity" ||
-                    key === "impactKg"
+                      key === "quantity" ||
+                      key === "impactKg"
                       ? "number"
                       : "text")
                   }
@@ -915,19 +916,16 @@ export function ImpactPage() {
   const { donations } = useDonorDonations();
   const completed = donations.filter((d) => d.status === "completed");
   const kg = completed.reduce((sum, d) => sum + d.impactKg, 0);
+  const impactStats: Array<[string, string | number, LucideIcon]> = [
+    ["Food donated", `${kg} kg`, Leaf],
+    ["Successful donations", completed.length, CheckCircle2],
+    ["Meals supported", `${completed.reduce((s, d) => s + d.servings, 0)}+`, Heart],
+    ["Waste diverted", `${kg} kg`, Recycle],
+  ];
   return (
     <Shell title="Your impact" eyebrow="Personal sustainability report">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          ["Food donated", `${kg} kg`, Leaf],
-          ["Successful donations", completed.length, CheckCircle2],
-          [
-            "Meals supported",
-            `${completed.reduce((s, d) => s + d.servings, 0)}+`,
-            Heart,
-          ],
-          ["Waste diverted", `${kg} kg`, Recycle],
-        ].map(([label, value, Icon]) => (
+        {impactStats.map(([label, value, Icon]) => (
           <Card key={String(label)}>
             <Icon className="h-5 w-5 text-[#0B8B7F]" />
             <p className="mt-4 text-2xl font-extrabold text-[#173B38]">

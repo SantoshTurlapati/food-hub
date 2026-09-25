@@ -39,6 +39,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 const flow: EmployeeStatus[] = [
   "assigned",
@@ -779,19 +780,16 @@ export function CompletedPage() {
 export function PerformancePage() {
   const { jobs } = useEmployeeJobs();
   const completed = jobs.filter((job) => job.status === "completed");
+  const performanceStats: Array<[string, string | number, LucideIcon]> = [
+    ["Total pickups", jobs.length, Truck],
+    ["Successful deliveries", completed.length, CheckCircle2],
+    ["Completion rate", "100%", Target],
+    ["Food collected", `${completed.reduce((sum, job) => sum + job.quantity, 0)} kg`, Leaf],
+  ];
   return (
     <Shell title="Performance">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          ["Total pickups", jobs.length, Truck],
-          ["Successful deliveries", completed.length, CheckCircle2],
-          ["Completion rate", "100%", Target],
-          [
-            "Food collected",
-            `${completed.reduce((sum, job) => sum + job.quantity, 0)} kg`,
-            Leaf,
-          ],
-        ].map(([label, value, Icon]) => (
+        {performanceStats.map(([label, value, Icon]) => (
           <Panel key={String(label)}>
             <Icon className="h-5 w-5 text-[#0B8B7F]" />
             <p className="mt-4 text-2xl font-extrabold text-[#173B38]">
