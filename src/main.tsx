@@ -86,7 +86,8 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
+const convex = new ConvexReactClient(convexUrl);
 
 
 
