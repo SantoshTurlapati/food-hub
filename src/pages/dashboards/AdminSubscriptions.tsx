@@ -4,10 +4,20 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Briefcase } from "lucide-react";
 import { motion } from "framer-motion";
+import { SEED_BUSINESSES } from "@/lib/mock-data";
 
 export default function AdminSubscriptions() {
-  const businesses = useQuery(api.mutations.businesses.list);
-  const activeBusinesses = businesses?.filter((b) => b.subscriptionPlan && b.subscriptionPlan !== "free") || [];
+  const queryBusinesses = useQuery(api.mutations.businesses.list);
+  const fallbackBusinesses = SEED_BUSINESSES.map((b) => ({
+    _id: b._id,
+    businessName: b.businessName,
+    businessType: b.category,
+    subscriptionPlan: b.plan.toLowerCase().includes("starter") ? "starter" : b.plan.toLowerCase().includes("growth") ? "professional" : "enterprise",
+    totalDonations: Math.round(b.totalDonatedKg / 25),
+  }));
+
+  const businesses = (queryBusinesses && queryBusinesses.length > 0) ? queryBusinesses : fallbackBusinesses;
+  const activeBusinesses = businesses?.filter((b: any) => b.subscriptionPlan && b.subscriptionPlan !== "free") || [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

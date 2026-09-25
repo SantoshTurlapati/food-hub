@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { RealTrackingMap } from "@/components/maps/RealTrackingMap";
 import { getIndiaGreeting } from "@/lib/time";
 import { formatINR, getDonationRate, getDonationValue, getPaymentStatus } from "./paymentValue";
 import {
@@ -843,40 +844,18 @@ export function TrackingPage() {
               </div>
               <StatusBadge status={active.status} />
             </div>
-            <div
-              className="relative mt-6 h-56 overflow-hidden rounded-2xl bg-[#EAF3EC]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(#c8ddd0 1px, transparent 1px), linear-gradient(90deg, #c8ddd0 1px, transparent 1px)",
-                backgroundSize: "38px 38px",
-              }}
-            >
-              <div className="absolute left-[15%] top-[68%] h-4 w-4 rounded-full bg-[#174A57] ring-4 ring-white/70" />
-              <div className="absolute left-[78%] top-[28%] h-4 w-4 rounded-full bg-[#0B8B7F] ring-4 ring-white/70" />
-              <div className="absolute left-[47%] top-[44%] h-3 w-3 animate-pulse rounded-full bg-[#D97728]" />
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M15 68 Q33 20 47 44 T78 28"
-                  fill="none"
-                  stroke="#0B8B7F"
-                  strokeDasharray="3 2"
-                  strokeWidth="1"
-                />
-              </svg>
-              <div className="absolute bottom-4 left-4 rounded-xl bg-white/90 px-3 py-2 text-xs shadow">
-                <b>Pickup location</b>
-                <br />
-                {active.pickupAddress}
-              </div>
-              <div className="absolute right-4 top-4 rounded-xl bg-white/90 px-3 py-2 text-xs shadow">
-                <b>Destination</b>
-                <br />
-                Community kitchen
-              </div>
+            <div className="mt-6">
+              <RealTrackingMap
+                pickupAddress={active.pickupAddress}
+                destinationName="Hope Community Kitchen"
+                destinationAddress="East Gate 2, Community Food Center"
+                agentName={active.employee || "Alex Morgan"}
+                status={active.status}
+                foodName={active.foodName}
+                quantity={active.quantity}
+                etaMinutes={18}
+                className="h-80 w-full min-h-[340px] rounded-2xl overflow-hidden relative shadow-md border border-[#E6EAE4]"
+              />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               {[

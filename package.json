@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "start": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "preview": "vite preview"
+    "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.90",
@@ -43,6 +43,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.1.17",
+    "@vis.gl/react-google-maps": "^1.10.1",
     "@vly-ai/integrations": "^0.6.13",
     "@zumer/snapdom": "^2.0.1",
     "axios": "^1.13.2",
@@ -73,6 +74,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/google.maps": "^3.66.4",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

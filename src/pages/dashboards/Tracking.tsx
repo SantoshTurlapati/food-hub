@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { MapPin, Package, Truck, CheckCircle2, Clock, Circle } from "lucide-react";
 import { motion } from "framer-motion";
+import { SEED_DONATIONS } from "@/lib/mock-data";
 
 const statusSteps = [
   { key: "pending", label: "Donation Created", icon: Package },
@@ -17,12 +18,22 @@ const statusSteps = [
 const statusOrder = ["pending", "accepted", "on_the_way", "picked_up", "delivered", "completed"];
 
 function getStepIndex(status: string) {
-  return statusOrder.indexOf(status);
+  const index = statusOrder.indexOf(status);
+  return index >= 0 ? index : 1;
 }
 
 export default function Tracking() {
-  const donations = useQuery(api.mutations.donations.list);
-  const activeDonations = donations?.filter((d) => d.status !== "cancelled") || [];
+  const queryDonations = useQuery(api.mutations.donations.list);
+  const storedDonations = (() => {
+    try {
+      const stored = localStorage.getItem("foodflow_all_donations") || localStorage.getItem("foodflow_donor_donations");
+      return stored ? JSON.parse(stored) : SEED_DONATIONS;
+    } catch {
+      return SEED_DONATIONS;
+    }
+  })();
+  const donations = (queryDonations && queryDonations.length > 0) ? queryDonations : storedDonations;
+  const activeDonations = donations?.filter((d: any) => d.status !== "cancelled") || [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { DemoRoleSwitcher } from "./DemoRoleSwitcher";
 import {
   Home,
   Award,
@@ -208,6 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <DemoRoleSwitcher />
             <Link to="/dashboard/notifications" className="relative flex h-9 w-9 items-center justify-center rounded-xl hover:bg-[#F5F0EB] transition-colors">
               <Bell className="h-5 w-5 text-gray-500" />
               <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-[#00615F] text-white text-[10px] font-bold flex items-center justify-center">3</span>

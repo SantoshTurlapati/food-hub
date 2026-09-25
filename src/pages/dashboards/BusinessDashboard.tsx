@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { StatCard, StatusBadge, EmptyState, foodImages, getFoodImage } from "@/components/dashboard/SharedComponents";
 import { Building2, Heart, BarChart3, TrendingUp, Star, Package, Users, Briefcase, Plus, Award, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router";
+import { SEED_DONATIONS, SEED_BUSINESSES } from "@/lib/mock-data";
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -15,9 +16,14 @@ export default function BusinessDashboard() {
   const donations = useQuery(api.mutations.donations.list);
   const stats = useQuery(api.mutations.donations.getStats);
 
-  const myDonations = (donations || []).filter((d) => d.donorType === "business");
-  const completed = myDonations.filter((d) => d.status === "completed").length;
-  const totalKg = myDonations.reduce((a, d) => a + d.quantityKg, 0);
+  const fallbackDonations = SEED_DONATIONS.filter((d) => d.donorType === "business");
+  const myDonations = (donations && donations.length > 0)
+    ? donations.filter((d) => d.donorType === "business")
+    : fallbackDonations;
+  const completed = myDonations.filter((d) => d.status === "completed" || d.status === "delivered").length;
+  const totalKg = myDonations.reduce((a, d) => a + (d.quantityKg || 0), 0);
+  const impactScore = business?.impactScore ?? 88;
+  const businessName = business?.businessName || user?.name || "Green Leaf Bakery & Deli";
 
   return (
     <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8">
@@ -28,7 +34,7 @@ export default function BusinessDashboard() {
         <div className="absolute inset-0 flex items-center px-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {business?.businessName || "Business Dashboard"} 🏨
+              {businessName} 🏨
             </h1>
             <p className="text-orange-100 mt-1">Manage surplus food donations and track your sustainability impact.</p>
             <Link to="/dashboard/create-donation" className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-bold text-[#E65100] hover:bg-orange-50 transition-colors">
@@ -43,7 +49,7 @@ export default function BusinessDashboard() {
         <StatCard title="Total Donations" value={myDonations.length} icon={Heart} color="emerald" trend={{ value: "+12%", positive: true }} />
         <StatCard title="Completed" value={completed} icon={CheckCircle2} color="emerald" />
         <StatCard title="Food Rescued" value={`${totalKg.toFixed(0)} kg`} icon={Package} color="emerald" />
-        <StatCard title="Impact Score" value={business?.impactScore ?? 0} icon={Award} color="emerald" />
+        <StatCard title="Impact Score" value={impactScore} icon={Award} color="emerald" />
       </motion.div>
 
       {/* Impact score + subscription */}
@@ -52,7 +58,7 @@ export default function BusinessDashboard() {
           <div className="absolute -top-6 -right-6 h-32 w-32 bg-white/10 rounded-full" />
           <Award className="h-8 w-8 text-emerald-200 mb-3" />
           <h3 className="text-xl font-extrabold">Your Impact Score</h3>
-          <p className="text-5xl font-extrabold mt-2">{business?.impactScore ?? 0}</p>
+          <p className="text-5xl font-extrabold mt-2">{impactScore}</p>
           <p className="text-sm text-emerald-100 mt-1">Based on verified donations, successful deliveries, and consistent activity.</p>
           <div className="mt-4 flex gap-6">
             <div>

@@ -6,10 +6,26 @@ import { Leaf, CheckCircle2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { SEED_BIOGAS } from "@/lib/mock-data";
+import { useState } from "react";
+
+const FALLBACK_BIOGAS = SEED_BIOGAS.map((b) => ({
+  _id: b._id,
+  partnerName: b.name,
+  partnerType: "biogas_plant",
+  city: b.location,
+  address: b.location,
+  capacityKgPerWeek: b.agreedWeeklyKg,
+  totalCollectedKg: b.currentIntakeKg,
+  verificationStatus: "verified",
+}));
 
 export default function AdminBiogas() {
-  const partners = useQuery(api.mutations.biogas.list);
+  const queryPartners = useQuery(api.mutations.biogas.list);
   const verifyPartner = useMutation(api.mutations.biogas.verify);
+  const [localPartners, setLocalPartners] = useState<any[]>(FALLBACK_BIOGAS);
+
+  const partners = (queryPartners && queryPartners.length > 0) ? queryPartners : localPartners;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

@@ -7,21 +7,61 @@ import { useAuth } from "@/hooks/use-auth";
 import { ClipboardList, MapPin, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { SEED_DONATIONS } from "@/lib/mock-data";
+import { useState } from "react";
 
 export default function EmployeeRequests() {
   const { user } = useAuth();
   const employee = useQuery(api.mutations.employees.getByUserId, user?._id ? { userId: user._id } : "skip");
-  const available = useQuery(api.mutations.donations.listAvailable);
+  const queryAvailable = useQuery(api.mutations.donations.listAvailable);
   const assignEmployee = useMutation(api.mutations.donations.assignEmployee);
 
+  const fallbackAvailable = SEED_DONATIONS.filter((d) => ["pending", "accepted"].includes(d.status));
+  const [requestsList, setRequestsList] = useState<any[]>(fallbackAvailable);
+
+  const available = (queryAvailable && queryAvailable.length > 0) ? queryAvailable : requestsList;
+
   const handleAccept = async (donationId: string) => {
-    if (!employee) return;
-    try {
-      await assignEmployee({ donationId: donationId as never, employeeId: employee._id });
-      toast.success("Donation accepted! Proceed to the pickup location.");
-    } catch {
-      toast.error("Failed to accept donation.");
+    const acceptedItem = available.find((d) => d._id === donationId || d.id === donationId);
+    setRequestsList((prev) => prev.filter((d) => d._id !== donationId && d.id !== donationId));
+    
+    // Update local storage so assignments and donor see this assigned immediately
+    if (acceptedItem) {
+      try {
+        const rawJobs = localStorage.getItem("foodflow_employee_jobs");
+        const jobs = rawJobs ? JSON.parse(rawJobs) : [];
+        const updatedJobs = jobs.map((j: any) =>
+          j.id === (acceptedItem.id || acceptedItem._id) ? { ...j, status: "assigned", employee: user?.name || "Alex Morgan" } : j
+        );
+        localStorage.setItem("foodflow_employee_jobs", JSON.stringify(updatedJobs));
+        window.dispatchEvent(new Event("foodflow-jobs-changed"));
+      } catch {
+        // ignore
+      }
+
+      try {
+        const rawAll = localStorage.getItem("foodflow_all_donations");
+        if (rawAll) {
+          const parsed = JSON.parse(rawAll);
+          const updated = parsed.map((d: any) =>
+            (d._id === donationId || d.id === donationId) ? { ...d, status: "assigned", employee: user?.name || "Alex Morgan" } : d
+          );
+          localStorage.setItem("foodflow_all_donations", JSON.stringify(updated));
+          window.dispatchEvent(new Event("foodflow-donations-changed"));
+        }
+      } catch {
+        // ignore
+      }
     }
+
+    try {
+      if (employee?._id) {
+        await assignEmployee({ donationId: donationId as never, employeeId: employee._id });
+      }
+    } catch {
+      // offline fallback
+    }
+    toast.success("Donation accepted! Proceed to the pickup location.");
   };
 
   return (
@@ -52,7 +92,7 @@ export default function EmployeeRequests() {
                   <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-emerald-500" /> {d.pickupAddress}</p>
                   <p className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-blue-500" /> {d.quantity} · {d.quantityKg} kg</p>
                   <p>Serves {d.servesPeople} people</p>
-                  <p className="capitalize">Condition: {d.condition.replace(/_/g, " ")}</p>
+                  <p className="capitalize">Condition: {(d.condition || "fresh").replace(/_/g, " ")}</p>
                 </div>
                 <Button onClick={() => handleAccept(d._id)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">
                   Accept Request

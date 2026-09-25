@@ -6,10 +6,39 @@ import { Building2, CheckCircle2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { SEED_BUSINESSES } from "@/lib/mock-data";
+import { useState } from "react";
+
+const FALLBACK_BUSINESSES = SEED_BUSINESSES.map((b) => ({
+  _id: b._id,
+  businessName: b.businessName,
+  businessType: b.category,
+  city: b.address,
+  address: b.address,
+  totalDonations: Math.round(b.totalDonatedKg / 25),
+  totalQuantityKg: b.totalDonatedKg,
+  impactScore: b.impactScore,
+  verificationStatus: b.verificationStatus,
+}));
 
 export default function AdminBusinesses() {
-  const businesses = useQuery(api.mutations.businesses.list);
+  const queryBusinesses = useQuery(api.mutations.businesses.list);
   const verifyBusiness = useMutation(api.mutations.businesses.verify);
+  const [localBusinesses, setLocalBusinesses] = useState<any[]>(FALLBACK_BUSINESSES);
+
+  const businesses = (queryBusinesses && queryBusinesses.length > 0) ? queryBusinesses : localBusinesses;
+
+  const handleVerify = async (businessId: string, status: "verified" | "rejected") => {
+    setLocalBusinesses((prev) =>
+      prev.map((b) => (b._id === businessId ? { ...b, verificationStatus: status } : b))
+    );
+    try {
+      await verifyBusiness({ businessId: businessId as never, status });
+    } catch {
+      // offline fallback
+    }
+    toast.success(`Business ${status === "verified" ? "verified and approved" : "rejected"}.`);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

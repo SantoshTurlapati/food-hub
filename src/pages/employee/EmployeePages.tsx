@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { RealTrackingMap } from "@/components/maps/RealTrackingMap";
 import { getIndiaGreeting } from "@/lib/time";
 import {
   EmptyState,
@@ -681,39 +682,18 @@ export function TrackingPage() {
               </div>
               <StatusBadge status={active.status} />
             </div>
-            <div
-              className="relative mt-6 h-72 overflow-hidden rounded-2xl bg-[#EAF3EC]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(#c8ddd0 1px, transparent 1px), linear-gradient(90deg, #c8ddd0 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-              }}
-            >
-              <div className="absolute left-[13%] top-[70%] h-4 w-4 rounded-full bg-[#174A57] ring-4 ring-white/80" />
-              <div className="absolute left-[48%] top-[35%] h-4 w-4 animate-pulse rounded-full bg-[#D97728] ring-4 ring-white/80" />
-              <div className="absolute left-[80%] top-[25%] h-4 w-4 rounded-full bg-[#0B8B7F] ring-4 ring-white/80" />
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 100 100"
-              >
-                <path
-                  d="M13 70 Q29 20 48 35 T80 25"
-                  fill="none"
-                  stroke="#0B8B7F"
-                  strokeDasharray="3 2"
-                  strokeWidth="0.9"
-                />
-              </svg>
-              <div className="absolute bottom-4 left-4 rounded-xl bg-white/90 px-3 py-2 text-xs shadow">
-                <b>You are here</b>
-                <br />
-                Current location
-              </div>
-              <div className="absolute right-4 top-4 rounded-xl bg-white/90 px-3 py-2 text-xs shadow">
-                <b>Pickup</b>
-                <br />
-                {active.pickup}
-              </div>
+            <div className="mt-6">
+              <RealTrackingMap
+                pickupAddress={active.pickup}
+                destinationName={active.destination}
+                destinationAddress="Designated Distribution Center, Ward 5"
+                agentName="You (Collection Agent)"
+                status={active.status}
+                foodName={active.food}
+                quantity={`${active.quantity} kg`}
+                etaMinutes={18}
+                className="h-80 w-full min-h-[340px] rounded-2xl overflow-hidden relative shadow-md border border-[#E6EAE4]"
+              />
             </div>
             <div className="mt-6">
               <Timeline job={active} />

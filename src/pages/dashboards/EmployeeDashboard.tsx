@@ -242,7 +242,7 @@ export default function EmployeeDashboard() {
         variants={fadeUp}
         className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
       >
-        {[
+        {([
           [
             "New requests",
             available.length,
@@ -274,7 +274,7 @@ export default function EmployeeDashboard() {
             Users,
             "bg-[#FFF0EB] text-[#C65A35]",
           ],
-        ].map(([label, value, Icon, tint]) => (
+        ] as [string, number | string, React.ComponentType<{ className?: string }>, string][]).map(([label, value, Icon, tint]) => (
           <div
             key={String(label)}
             className="rounded-2xl border border-[#E6EAE4] bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
@@ -406,7 +406,7 @@ export default function EmployeeDashboard() {
                   </p>
                   <p className="mt-1 text-xs text-[#71817C]">
                     {activeDelivery.quantityKg} kg · #
-                    {activeDelivery._id.slice(-7).toUpperCase()}
+                    {String(activeDelivery._id || (activeDelivery as any).id || "0000000").slice(-7).toUpperCase()}
                   </p>
                 </div>
                 <StatusBadge status={activeDelivery.status} />
@@ -502,11 +502,11 @@ export default function EmployeeDashboard() {
           />
         ) : (
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            {sortedRequests.slice(0, 4).map((donation, index) => {
+            {(sortedRequests || []).slice(0, 4).map((donation, index) => {
               const priority = priorityFor(donation);
               return (
                 <motion.div
-                  key={donation._id}
+                  key={donation._id || (donation as any).id || index}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.06 }}

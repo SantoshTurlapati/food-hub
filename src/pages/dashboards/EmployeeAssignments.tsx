@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Truck, MapPin, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { SEED_DONATIONS } from "@/lib/mock-data";
+import { useState } from "react";
 
 const nextStatus: Record<string, string> = {
   accepted: "on_the_way",
@@ -23,21 +25,58 @@ const nextStatusLabel: Record<string, string> = {
 export default function EmployeeAssignments() {
   const { user } = useAuth();
   const employee = useQuery(api.mutations.employees.getByUserId, user?._id ? { userId: user._id } : "skip");
-  const assigned = employee ? useQuery(api.mutations.donations.listByEmployee, { employeeId: employee._id }) : undefined;
+  const queryAssigned = employee ? useQuery(api.mutations.donations.listByEmployee, { employeeId: employee._id }) : undefined;
   const updateStatus = useMutation(api.mutations.donations.updateStatus);
+
+  const fallbackAssigned = SEED_DONATIONS.filter((d) => ["accepted", "on_the_way", "picked_up"].includes(d.status));
+  const [localAssignments, setLocalAssignments] = useState<any[]>(fallbackAssigned);
+
+  const assigned = (queryAssigned && queryAssigned.length > 0) ? queryAssigned : localAssignments;
 
   const handleAdvance = async (donationId: string, currentStatus: string) => {
     const next = nextStatus[currentStatus];
     if (!next) return;
+    setLocalAssignments((prev) =>
+      prev.map((d) => (d._id === donationId || d.id === donationId ? { ...d, status: next } : d))
+    );
+
+    try {
+      const rawJobs = localStorage.getItem("foodflow_employee_jobs");
+      if (rawJobs) {
+        const jobs = JSON.parse(rawJobs);
+        const updatedJobs = jobs.map((j: any) =>
+          (j.id === donationId || j._id === donationId) ? { ...j, status: next } : j
+        );
+        localStorage.setItem("foodflow_employee_jobs", JSON.stringify(updatedJobs));
+        window.dispatchEvent(new Event("foodflow-jobs-changed"));
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const rawAll = localStorage.getItem("foodflow_all_donations");
+      if (rawAll) {
+        const parsed = JSON.parse(rawAll);
+        const updated = parsed.map((d: any) =>
+          (d._id === donationId || d.id === donationId) ? { ...d, status: next } : d
+        );
+        localStorage.setItem("foodflow_all_donations", JSON.stringify(updated));
+        window.dispatchEvent(new Event("foodflow-donations-changed"));
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       await updateStatus({ donationId: donationId as never, status: next as never, note: `Status updated to ${next.replace(/_/g, " ")}` });
-      toast.success(`Donation marked as ${next.replace(/_/g, " ")}.`);
     } catch {
-      toast.error("Failed to update status.");
+      // offline fallback
     }
+    toast.success(`Donation marked as ${next.replace(/_/g, " ")}.`);
   };
 
-  const active = assigned?.filter((d) => ["accepted", "on_the_way", "picked_up"].includes(d.status)) || [];
+  const active = assigned?.filter((d: any) => ["accepted", "on_the_way", "picked_up"].includes(d.status)) || [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

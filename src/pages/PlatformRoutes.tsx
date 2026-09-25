@@ -14,6 +14,7 @@ export default function PlatformRoutes() {
     <Route path="donations/history" element={<RoleRedirect donor="/donor/donations/history" business="/business/donations/history" admin="/admin/donations" />} />
     <Route path="donations/:id" element={<RoleRedirect donor="/donor/donations" business="/business/donations" admin="/admin/donations" />} />
     <Route path="verification" element={<RoleRedirect donor="/donor/dashboard" admin="/admin/donations" />} />
+    <Route path="tracking" element={<RoleRedirect donor="/donor/tracking" employee="/employee/tracking" business="/business/tracking" admin="/admin/live-operations" />} />
     <Route path="pickups" element={<RoleRedirect donor="/donor/tracking" employee="/employee/assignments" business="/business/tracking" admin="/admin/live-operations" partner="/partner/collections" />} />
     <Route path="notifications" element={<RoleRedirect donor="/donor/notifications" employee="/employee/notifications" business="/business/notifications" admin="/admin/notifications" partner="/partner/notifications" />} />
     <Route path="impact" element={<RoleRedirect donor="/donor/impact" business="/business/impact" admin="/admin/analytics" partner="/partner/impact" />} />

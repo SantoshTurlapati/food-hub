@@ -6,13 +6,41 @@ import { UserCheck, Star, Truck } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { SEED_EMPLOYEES } from "@/lib/mock-data";
+import { useState } from "react";
+
+const FALLBACK_EMPLOYEES = SEED_EMPLOYEES.map((e) => ({
+  _id: e._id,
+  employeeId: `EMP-${e._id.toUpperCase()}`,
+  userId: e._id,
+  name: e.name,
+  vehicleType: e.vehicle,
+  zone: e.region,
+  rating: e.rating,
+  totalDeliveries: e.completedJobs,
+  status: e.status,
+}));
 
 export default function AdminEmployees() {
-  const employees = useQuery(api.mutations.employees.list);
+  const queryEmployees = useQuery(api.mutations.employees.list);
   const allUsers = useQuery(api.mutations.users.getAllUsers);
   const updateStatus = useMutation(api.mutations.employees.updateStatus);
+  const [localList, setLocalList] = useState<any[]>(FALLBACK_EMPLOYEES);
 
-  const getUserName = (userId: string) => allUsers?.find((u) => u._id === userId)?.name || "Unknown";
+  const employees = (queryEmployees && queryEmployees.length > 0) ? queryEmployees : localList;
+
+  const getUserName = (userId: string, empName?: string) => {
+    if (empName) return empName;
+    return allUsers?.find((u) => u._id === userId)?.name || "Alex Morgan";
+  };
+
+  const handleToggleStatus = (empId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "active" ? "on_break" : "active";
+    setLocalList((prev) =>
+      prev.map((e) => (e._id === empId ? { ...e, status: nextStatus } : e))
+    );
+    toast.success(`Employee status updated to ${nextStatus}.`);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

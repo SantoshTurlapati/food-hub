@@ -94,13 +94,24 @@ function stepIndex(status: string) {
   );
 }
 
+import { SEED_DONATIONS } from "@/lib/mock-data";
+
 export default function UserDashboard() {
   const { user } = useAuth();
-  const donations =
+  const queryDonations =
     useQuery(
       api.mutations.donations.listByDonor,
       user?._id ? { donorId: user._id } : "skip",
-    ) || [];
+    );
+  const storedDonations = (() => {
+    try {
+      const stored = localStorage.getItem("foodflow_all_donations") || localStorage.getItem("foodflow_donor_donations");
+      return stored ? JSON.parse(stored) : SEED_DONATIONS;
+    } catch {
+      return SEED_DONATIONS;
+    }
+  })();
+  const donations = (queryDonations && queryDonations.length > 0) ? queryDonations : storedDonations;
   const completed = donations.filter(
     (donation) => donation.status === "completed",
   );
@@ -327,7 +338,7 @@ export default function UserDashboard() {
                   <Truck className="h-3.5 w-3.5" /> Employee assignment pending
                 </span>
                 <span className="font-semibold text-[#00877F]">
-                  ID #{activeDonation._id.slice(-8).toUpperCase()}
+                  ID #{String(activeDonation._id || (activeDonation as any).id || "00000000").slice(-8).toUpperCase()}
                 </span>
               </div>
             </div>
@@ -423,9 +434,9 @@ export default function UserDashboard() {
             />
           ) : (
             <div className="divide-y divide-[#EEF1ED]">
-              {donations.slice(0, 5).map((donation, index) => (
+              {(donations || []).slice(0, 5).map((donation, index) => (
                 <motion.div
-                  key={donation._id}
+                  key={donation._id || (donation as any).id || index}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.06 }}

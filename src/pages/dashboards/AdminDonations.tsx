@@ -5,14 +5,24 @@ import { api } from "@/convex/_generated/api";
 import { UtensilsCrossed, MapPin, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { SEED_DONATIONS } from "@/lib/mock-data";
 
 export default function AdminDonations() {
-  const donations = useQuery(api.mutations.donations.list);
+  const queryDonations = useQuery(api.mutations.donations.list);
+  const storedDonations = (() => {
+    try {
+      const stored = localStorage.getItem("foodflow_all_donations") || localStorage.getItem("foodflow_donor_donations");
+      return stored ? JSON.parse(stored) : SEED_DONATIONS;
+    } catch {
+      return SEED_DONATIONS;
+    }
+  })();
+  const donations = (queryDonations && queryDonations.length > 0) ? queryDonations : storedDonations;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = donations?.filter((d) => {
-    const matchSearch = !search || d.foodName.toLowerCase().includes(search.toLowerCase()) || d.pickupAddress.toLowerCase().includes(search.toLowerCase());
+  const filtered = donations?.filter((d: any) => {
+    const matchSearch = !search || d.foodName?.toLowerCase().includes(search.toLowerCase()) || d.pickupAddress?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || d.status === statusFilter;
     return matchSearch && matchStatus;
   }) || [];

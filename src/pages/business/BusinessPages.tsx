@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { RealTrackingMap } from "@/components/maps/RealTrackingMap";
 import { getIndiaGreeting } from "@/lib/time";
 import {
   EmptyState,
@@ -605,29 +606,18 @@ export function BusinessTrackingPage() {
               </div>
               <StatusBadge status={active.status} />
             </div>
-            <div
-              className="relative mt-6 h-64 rounded-2xl bg-[#EAF3EC]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(#c8ddd0 1px, transparent 1px), linear-gradient(90deg, #c8ddd0 1px, transparent 1px)",
-                backgroundSize: "38px 38px",
-              }}
-            >
-              <div className="absolute left-[15%] top-[65%] h-4 w-4 rounded-full bg-[#174A57]" />
-              <div className="absolute left-[50%] top-[35%] h-4 w-4 animate-pulse rounded-full bg-[#D97728]" />
-              <div className="absolute left-[78%] top-[25%] h-4 w-4 rounded-full bg-[#0B8B7F]" />
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 100 100"
-              >
-                <path
-                  d="M15 65 Q38 15 50 35 T78 25"
-                  fill="none"
-                  stroke="#0B8B7F"
-                  strokeDasharray="3 2"
-                  strokeWidth="1"
-                />
-              </svg>
+            <div className="mt-6">
+              <RealTrackingMap
+                pickupAddress="Business Warehouse / Kitchen Dock"
+                destinationName="Hope Community Kitchen"
+                destinationAddress="East Gate 2, Community Food Center"
+                agentName={active.employee || "Alex Morgan"}
+                status={active.status}
+                foodName={active.food}
+                quantity={`${active.quantity} ${active.unit}`}
+                etaMinutes={18}
+                className="h-80 w-full min-h-[340px] rounded-2xl overflow-hidden relative shadow-md border border-[#E6EAE4]"
+              />
             </div>
             <div className="mt-6">
               <Timeline donation={active} />
@@ -651,7 +641,7 @@ export function BusinessAnalyticsPage() {
   return (
     <Shell title="Business analytics">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
+        {([
           ["Food donated", `${kg} kg`, Leaf],
           ["Success rate", "94%", CheckCircle2],
           ["Impact score", "87/100", Award],
@@ -660,7 +650,7 @@ export function BusinessAnalyticsPage() {
             donations.reduce((s, d) => s + d.servings, 0),
             Heart,
           ],
-        ].map(([label, value, Icon]) => (
+        ] as [string, React.ReactNode, React.ComponentType<{ className?: string }>][]).map(([label, value, Icon]) => (
           <Panel key={String(label)}>
             <Icon className="h-5 w-5 text-[#0B8B7F]" />
             <p className="mt-4 text-2xl font-extrabold text-[#173B38]">
@@ -713,7 +703,7 @@ export function BusinessImpactPage() {
   return (
     <Shell title="Your business impact">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
+        {([
           [
             "Food diverted",
             `${complete.reduce((s, d) => s + d.quantity, 0)} kg`,
@@ -726,7 +716,7 @@ export function BusinessImpactPage() {
           ],
           ["Successful donations", complete.length, CheckCircle2],
           ["Impact score", "87/100", Award],
-        ].map(([label, value, Icon]) => (
+        ] as [string, React.ReactNode, React.ComponentType<{ className?: string }>][]).map(([label, value, Icon]) => (
           <Panel key={String(label)}>
             <Icon className="h-6 w-6 text-[#0B8B7F]" />
             <p className="mt-5 text-2xl font-extrabold text-[#173B38]">

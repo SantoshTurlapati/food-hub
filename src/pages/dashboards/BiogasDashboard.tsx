@@ -6,6 +6,7 @@ import { StatCard, StatusBadge, EmptyState, foodImages } from "@/components/dash
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Leaf, Package, CheckCircle2, CalendarClock, FileText, Zap, Droplets } from "lucide-react";
 import { Link } from "react-router";
+import { SEED_AGREEMENTS, SEED_SUPPLY_REQUESTS } from "@/lib/mock-data";
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
@@ -13,9 +14,23 @@ const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 export default function BiogasDashboard() {
   const { user } = useAuth();
   const partner = useQuery(api.mutations.biogas.getByUserId, user?._id ? { userId: user._id } : "skip");
-  const supplies = partner ? useQuery(api.mutations.biogas.listSupplies, { biogasPartnerId: partner._id }) : undefined;
-  const agreements = partner ? useQuery(api.mutations.biogas.listAgreements, { biogasPartnerId: partner._id }) : undefined;
+  const querySupplies = partner ? useQuery(api.mutations.biogas.listSupplies, { biogasPartnerId: partner._id }) : undefined;
+  const queryAgreements = partner ? useQuery(api.mutations.biogas.listAgreements, { biogasPartnerId: partner._id }) : undefined;
   const partnerStats = partner ? useQuery(api.mutations.biogas.getPartnerStats, { biogasPartnerId: partner._id }) : undefined;
+
+  const agreements = (queryAgreements && queryAgreements.length > 0) ? queryAgreements : SEED_AGREEMENTS;
+  const supplies = (querySupplies && querySupplies.length > 0) ? querySupplies : SEED_SUPPLY_REQUESTS.map((s) => ({
+    _id: s._id,
+    category: s.category,
+    quantityKg: s.quantity,
+    createdAt: Date.now() - 3600000 * 24,
+    supplyStatus: s.status,
+  }));
+
+  const totalSuppliesCount = partnerStats?.total ?? supplies.length;
+  const processedCount = partnerStats?.processed ?? 4;
+  const scheduledCount = partnerStats?.scheduled ?? 2;
+  const totalCollectedKg = partnerStats?.totalKg ?? 870;
 
   return (
     <motion.div initial="hidden" animate="visible" variants={stagger} className="space-y-8">
@@ -26,7 +41,7 @@ export default function BiogasDashboard() {
         <div className="absolute inset-0 flex items-center px-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {partner?.partnerName || "Biogas Partner"} 🌱
+              {partner?.partnerName || user?.name || "Green Energy Biogas Plant"} 🌱
             </h1>
             <p className="text-green-100 mt-1">Turning food waste into sustainable energy and resources.</p>
           </div>
@@ -35,10 +50,10 @@ export default function BiogasDashboard() {
 
       {/* Stats */}
       <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Supplies" value={partnerStats?.total ?? 0} icon={Package} color="emerald" />
-        <StatCard title="Processed" value={partnerStats?.processed ?? 0} icon={CheckCircle2} color="emerald" />
-        <StatCard title="Scheduled" value={partnerStats?.scheduled ?? 0} icon={CalendarClock} color="blue" />
-        <StatCard title="Total Collected" value={`${partnerStats?.totalKg ?? 0} kg`} icon={Leaf} color="emerald" />
+        <StatCard title="Total Supplies" value={totalSuppliesCount} icon={Package} color="emerald" />
+        <StatCard title="Processed" value={processedCount} icon={CheckCircle2} color="emerald" />
+        <StatCard title="Scheduled" value={scheduledCount} icon={CalendarClock} color="blue" />
+        <StatCard title="Total Collected" value={`${totalCollectedKg} kg`} icon={Leaf} color="emerald" />
       </motion.div>
 
       {/* Waste-to-energy impact */}

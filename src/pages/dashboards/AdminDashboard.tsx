@@ -109,34 +109,62 @@ function SectionTitle({
   );
 }
 
+import { SEED_DONATIONS, SEED_EMPLOYEES, SEED_BUSINESSES, SEED_BIOGAS } from "@/lib/mock-data";
+
+const DEFAULT_ADMIN_USERS = [
+  { _id: "u-1", name: "Alex Johnson", email: "alex@example.com", role: "user", phone: "+91 98765 01000", verificationStatus: "verified" },
+  { _id: "u-2", name: "Grand Hotel Kitchen (Chef Rajesh)", email: "kitchen@grandhotel.com", role: "business", phone: "+91 98111 22334", verificationStatus: "verified" },
+  { _id: "u-3", name: "Alex Morgan", email: "alex.morgan@foodflow.com", role: "employee", phone: "+91 98765 01001", verificationStatus: "verified" },
+  { _id: "u-4", name: "Green Energy Biogas (Dr. Murthy)", email: "operations@greenenergybiogas.com", role: "biogas", phone: "+91 98666 77889", verificationStatus: "verified" },
+  { _id: "u-5", name: "Green Leaf Bakery & Deli", email: "contact@greenleaf.com", role: "business", phone: "+91 98222 33445", verificationStatus: "verified" },
+  { _id: "u-6", name: "Priya Sharma", email: "priya.sharma@foodflow.com", role: "employee", phone: "+91 98765 01003", verificationStatus: "verified" },
+  { _id: "u-7", name: "Super Administrator", email: "admin@foodflow.com", role: "admin", phone: "+91 98765 01004", verificationStatus: "verified" },
+];
+
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const users = (useQuery(api.mutations.users.getAllUsers) || []) as any[];
-  const employees = (useQuery(api.mutations.employees.list) || []) as any[];
-  const businesses = (useQuery(api.mutations.businesses.list) || []) as any[];
-  const donations = (useQuery(api.mutations.donations.list) || []) as any[];
-  const partners = (useQuery(api.mutations.biogas.list) || []) as any[];
+  const queryUsers = useQuery(api.mutations.users.getAllUsers);
+  const queryEmployees = useQuery(api.mutations.employees.list);
+  const queryBusinesses = useQuery(api.mutations.businesses.list);
+  const queryDonations = useQuery(api.mutations.donations.list);
+  const queryPartners = useQuery(api.mutations.biogas.list);
+
+  const storedDonations = (() => {
+    try {
+      const stored = localStorage.getItem("foodflow_all_donations") || localStorage.getItem("foodflow_donor_donations");
+      return stored ? JSON.parse(stored) : SEED_DONATIONS;
+    } catch {
+      return SEED_DONATIONS;
+    }
+  })();
+
+  const users = (queryUsers && queryUsers.length > 0) ? (queryUsers as any[]) : DEFAULT_ADMIN_USERS;
+  const employees = (queryEmployees && queryEmployees.length > 0) ? (queryEmployees as any[]) : (SEED_EMPLOYEES as any[]);
+  const businesses = (queryBusinesses && queryBusinesses.length > 0) ? (queryBusinesses as any[]) : (SEED_BUSINESSES as any[]);
+  const donations = (queryDonations && queryDonations.length > 0) ? (queryDonations as any[]) : storedDonations;
+  const partners = (queryPartners && queryPartners.length > 0) ? (queryPartners as any[]) : (SEED_BIOGAS as any[]);
+
   const [range, setRange] = useState("30 days");
   const [search, setSearch] = useState("");
 
   const completed = donations.filter(
-    (donation) => donation.status === "completed",
+    (donation: any) => donation.status === "completed" || donation.status === "delivered",
   );
-  const active = donations.filter((donation) =>
-    ["accepted", "on_the_way", "picked_up", "delivered"].includes(
+  const active = donations.filter((donation: any) =>
+    ["accepted", "on_the_way", "picked_up", "assigned", "scheduled", "in_transit"].includes(
       donation.status,
     ),
   );
-  const pending = donations.filter((donation) => donation.status === "pending");
+  const pending = donations.filter((donation: any) => donation.status === "pending");
   const delayed = donations.filter(
-    (donation) => donation.status === "on_the_way",
+    (donation: any) => donation.status === "on_the_way",
   );
   const foodKg = donations.reduce(
-    (sum, donation) => sum + donation.quantityKg,
+    (sum: number, donation: any) => sum + (donation.quantityKg || donation.impactKg || 12),
     0,
   );
   const people = donations.reduce(
-    (sum, donation) => sum + donation.servesPeople,
+    (sum: number, donation: any) => sum + (donation.servesPeople || donation.servings || 40),
     0,
   );
   const userById = useMemo(
@@ -151,14 +179,18 @@ export default function AdminDashboard() {
     () => new Map<string, any>(businesses.map((entry: any) => [entry.userId, entry])),
     [businesses],
   );
-  const visibleDonations = donations
-    .filter((donation) => {
-      const donor = userById.get(donation.donorId) as any;
+  const visibleDonations = (donations || [])
+    .filter((donation: any) => {
+      const donor = donation?.donorId ? userById.get(donation.donorId) as any : undefined;
+      const searchLower = (search || "").toLowerCase();
+      const foodName = (donation?.foodName || "").toLowerCase();
+      const donorName = (donor?.name || donation?.donorName || "").toLowerCase();
+      const idStr = String(donation?._id || donation?.id || "").toLowerCase();
       return (
-        !search ||
-        donation.foodName.toLowerCase().includes(search.toLowerCase()) ||
-        donor?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        donation._id.toLowerCase().includes(search.toLowerCase())
+        !searchLower ||
+        foodName.includes(searchLower) ||
+        donorName.includes(searchLower) ||
+        idStr.includes(searchLower)
       );
     })
     .slice(0, 8);
@@ -401,7 +433,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {visibleDonations.map((donation) => {
+              {visibleDonations.map((donation, index) => {
                 const donor = userById.get(donation.donorId) as any;
                 const business = businessByUser.get(donation.donorId) as any;
                 const employee = donation.assignedEmployeeId
@@ -409,13 +441,13 @@ export default function AdminDashboard() {
                   : undefined;
                 return (
                   <tr
-                    key={donation._id}
+                    key={donation._id || (donation as any).id || index}
                     className="border-b border-[#F0F3F0] last:border-0 hover:bg-[#FAFCFA]"
                   >
                     <td className="py-3 font-bold text-[#173B38]">
-                      #{donation._id.slice(-7).toUpperCase()}
+                      #{String(donation._id || donation.id || "0000000").slice(-7).toUpperCase()}
                       <p className="mt-1 font-normal text-[#9AA9A2]">
-                        {new Date(donation.createdAt).toLocaleDateString()}
+                        {new Date(donation.createdAt || Date.now()).toLocaleDateString()}
                       </p>
                     </td>
                     <td className="py-3 text-[#536B63]">
@@ -604,22 +636,22 @@ export default function AdminDashboard() {
             }
           />
           <div className="space-y-4">
-            {employees.slice(0, 4).map((employee, index) => (
-              <div key={employee._id}>
+            {(employees || []).slice(0, 4).map((employee, index) => (
+              <div key={employee._id || employee.id || index}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-[#41645B]">
-                    {index + 1}. {employee.employeeId}
+                    {index + 1}. {employee.employeeId || `EMP-${index + 1}`}
                   </span>
                   <span className="text-[#71817C]">
-                    {employee.totalDeliveries} pickups ·{" "}
-                    {employee.rating.toFixed(1)}★
+                    {employee.totalDeliveries || 0} pickups ·{" "}
+                    {(employee.rating || 5.0).toFixed(1)}★
                   </span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-[#E9F0EB]">
                   <div
                     className="h-full rounded-full bg-[#0B8B7F]"
                     style={{
-                      width: `${Math.min(100, employee.totalDeliveries * 12 + 35)}%`,
+                      width: `${Math.min(100, (employee.totalDeliveries || 0) * 12 + 35)}%`,
                     }}
                   />
                 </div>
@@ -644,21 +676,21 @@ export default function AdminDashboard() {
             }
           />
           <div className="space-y-3">
-            {partners.slice(0, 3).map((partner) => (
+            {(partners || []).slice(0, 3).map((partner, index) => (
               <div
-                key={partner._id}
+                key={partner._id || partner.id || index}
                 className="flex items-center justify-between rounded-xl bg-[#F5F9F5] p-3"
               >
                 <div>
                   <p className="text-xs font-bold text-[#173B38]">
-                    {partner.partnerName}
+                    {partner.partnerName || "Partner"}
                   </p>
                   <p className="mt-1 text-[10px] text-[#71817C]">
-                    {partner.capacityKgPerWeek} kg/week ·{" "}
-                    {partner.verificationStatus}
+                    {partner.capacityKgPerWeek || 5000} kg/week ·{" "}
+                    {partner.verificationStatus || "verified"}
                   </p>
                 </div>
-                <StatusBadge status={partner.verificationStatus} />
+                <StatusBadge status={partner.verificationStatus || "verified"} />
               </div>
             ))}
             {partners.length === 0 && (
@@ -681,13 +713,13 @@ export default function AdminDashboard() {
             action={<Gauge className="h-5 w-5 text-[#0B8B7F]" />}
           />
           <div className="space-y-3">
-            {[
+            {([
               ["API", Radio],
               ["Database", Database],
               ["Authentication", ShieldCheck],
               ["Notifications", Bell],
               ["Tracking", MapPin],
-            ].map(([name, Icon]) => (
+            ] as [string, React.ComponentType<{ className?: string }>][]).map(([name, Icon]) => (
               <div
                 key={String(name)}
                 className="flex items-center justify-between rounded-xl border border-[#EEF2EE] px-3 py-2.5"

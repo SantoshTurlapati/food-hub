@@ -8,42 +8,86 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserPlus } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useAuth, UserRole } from "@/hooks/use-auth";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  UserPlus,
+  ShieldCheck,
+  User,
+  Truck,
+  Building2,
+  Leaf,
+  CheckCircle2,
+  Info,
+  KeyRound,
+  MapPin,
+  Phone,
+  Sparkles,
+} from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { dashboardForRole } from "@/lib/role-routing";
+import { toast } from "sonner";
 
 interface AuthProps {
   redirectAfterAuth?: string;
 }
 
-const authImages = {
-  signIn: {
-    src: "https://imgv2-1-f.scribdassets.com/img/word_document/750019592/original/b77c2d42cf/1727898670?v=1",
-    alt: "FoodFlow community and sustainability illustration",
+const ROLE_DETAILS: {
+  role: UserRole;
+  label: string;
+  defaultEmail: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tagline: string;
+  badgeColor: string;
+}[] = [
+  {
+    role: "user",
+    label: "Individual Donor",
+    defaultEmail: "alex@example.com",
+    icon: User,
+    tagline: "Donate excess home meals & produce",
+    badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
   },
-  signUp: {
-    src: "https://img.freepik.com/premium-photo/food-waste-recycling-facility-transforming-leftover-produce-into-new-products-created-with-generative-ai_762026-594.jpg",
-    alt: "Food waste recycling facility",
+  {
+    role: "employee",
+    label: "Collection Agent",
+    defaultEmail: "alex.morgan@foodflow.com",
+    icon: Truck,
+    tagline: "Accept food rescue pickups & deliver to NGOs",
+    badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
   },
-};
-
-const authContent = {
-  signIn: {
-    eyebrow: "Welcome back to FoodFlow",
-    heading: "Continue making a meaningful difference.",
-    description: "Sign in to manage your donations, follow every pickup, and see how your surplus food helps communities and the planet.",
+  {
+    role: "business",
+    label: "Business Partner",
+    defaultEmail: "contact@greenleaf.com",
+    icon: Building2,
+    tagline: "Restaurants & supermarkets surplus management",
+    badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
   },
-  signUp: {
-    eyebrow: "Join the FoodFlow community",
-    heading: "Turn everyday surplus into real impact.",
-    description: "Create your free account to share surplus food, connect with trusted partners, track your impact, and help build a zero-waste community.",
+  {
+    role: "biogas",
+    label: "Biogas Partner",
+    defaultEmail: "operations@greenenergybiogas.com",
+    icon: Leaf,
+    tagline: "Convert non-edible organic waste to clean energy",
+    badgeColor: "bg-teal-100 text-teal-800 border-teal-200",
   },
-};
+  {
+    role: "admin",
+    label: "Super Admin",
+    defaultEmail: "admin@foodflow.com",
+    icon: ShieldCheck,
+    tagline: "Platform analytics, approvals & system health",
+    badgeColor: "bg-purple-100 text-purple-800 border-purple-200",
+  },
+];
 
 function resolveRedirectAfterAuth(
   returnTo: string | null,
@@ -55,244 +99,431 @@ function resolveRedirectAfterAuth(
   return fallback;
 }
 
-function getAuthErrorMessage(error: unknown, mode: "signIn" | "signUp") {
-  const message = error instanceof Error ? error.message : "";
-  if (message.includes("InvalidAccountId")) {
-    return mode === "signIn"
-      ? "No account was found for this email. Register first or check the email address."
-      : "This account could not be created. Please check the email address and try again.";
-  }
-  if (message.includes("timed out") || message.includes("taking too long")) {
-    return "The authentication service is taking too long to respond. Please check your connection and try again.";
-  }
-  return message || "Authentication failed. Please check your details and try again.";
-}
-
-function withAuthTimeout<T>(action: () => Promise<T>, actionName: string) {
-  let timeoutId: number | undefined;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(new Error(`${actionName} is taking too long. Please check your connection and try again.`));
-    }, 20000);
-  });
-
-  return Promise.race([action(), timeoutPromise]).finally(() => {
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId);
-    }
-  });
-}
-
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
-  const completeRegistration = useMutation(api.mutations.users.completeRegistration);
+  const { isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
-  const shouldUseDemoAuth = typeof window !== "undefined" && window.localStorage.getItem("foodflow_demo_auth") !== "false";
-
-  useEffect(() => {
-    if (shouldUseDemoAuth) {
-      navigate(redirectAfterAuth || "/dashboard", { replace: true });
-    }
-  }, [navigate, redirectAfterAuth, shouldUseDemoAuth]);
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(
     searchParams.get("returnTo"),
     redirectAfterAuth,
   );
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+
+  const initialMode = searchParams.get("mode") === "signup" ? "signUp" : "signIn";
+  const [mode, setMode] = useState<"signIn" | "signUp">(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("user");
-  const appliedRedirectRole = useRef(false);
-  const manualRedirect = useRef(false);
-  const pendingRegistrationRole = useRef<string | null>(null);
+
+  const [selectedRole, setSelectedRole] = useState<UserRole>("user");
+  const [email, setEmail] = useState("alex@example.com");
+  const [password, setPassword] = useState("password123");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+
   const registrationFormRef = useRef<HTMLFormElement>(null);
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      if (mode === "signUp" && registrationFormRef.current) {
-        const formData = new FormData(registrationFormRef.current);
-        sessionStorage.setItem("foodhub_registration", JSON.stringify({
-          name: formData.get("name"),
-          phone: formData.get("phone"),
-          address: formData.get("address"),
-          role: selectedRole,
-        }));
-      }
-      await withAuthTimeout(() => signIn("google", { redirectTo: redirect }), "Google sign-in");
-    } catch (error) {
-      console.error("Google authentication error:", error);
-      setError(getAuthErrorMessage(error, mode));
-    } finally {
-      setIsLoading(false);
+  // If already authenticated and not explicitly signed out, redirect
+  useEffect(() => {
+    if (isAuthenticated && user?.role && !window.localStorage.getItem("foodflow_signed_out")) {
+      navigate(dashboardForRole(user.role, redirect), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, redirect]);
+
+  const handleRoleSelect = (role: UserRole) => {
+    setSelectedRole(role);
+    const roleInfo = ROLE_DETAILS.find((d) => d.role === role);
+    if (roleInfo && mode === "signIn") {
+      setEmail(roleInfo.defaultEmail);
     }
   };
 
-  useEffect(() => {
-    if (
-      pendingRegistrationRole.current &&
-      user?.role === pendingRegistrationRole.current
-    ) {
-      const role = pendingRegistrationRole.current;
-      pendingRegistrationRole.current = null;
-      navigate(dashboardForRole(role, redirect));
-      return;
-    }
-    if (!authLoading && isAuthenticated && !manualRedirect.current) {
-      const savedRegistration = sessionStorage.getItem("foodhub_registration");
-      if (savedRegistration && !appliedRedirectRole.current) {
-        appliedRedirectRole.current = true;
-        sessionStorage.removeItem("foodhub_registration");
-        const registration = JSON.parse(savedRegistration);
-        void completeRegistration(registration)
-          .then(() => navigate(dashboardForRole(registration.role, redirect)))
-          .catch((error) => setError(error instanceof Error ? error.message : "Unable to save your registration details."));
-      } else {
-        navigate(dashboardForRole(user?.role, redirect));
-      }
-    }
-  }, [authLoading, isAuthenticated, navigate, redirect, completeRegistration, user?.role]);
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
-    const isRegistering = mode === "signUp";
-    if (isRegistering) {
-      // Keep the auth effect from routing before the selected role is saved.
-      manualRedirect.current = true;
-    }
     try {
-      const formData = new FormData(event.currentTarget);
+      const formData = new FormData();
       formData.set("flow", mode);
-      formData.set("email", String(formData.get("email") || "").trim().toLowerCase());
-      await withAuthTimeout(() => signIn("password", formData), mode === "signIn" ? "Login" : "Account creation");
+      formData.set("role", selectedRole);
+      formData.set("email", email.trim());
+      formData.set("password", password);
       if (mode === "signUp") {
-        await completeRegistration({
-          name: String(formData.get("name") || ""),
-          phone: String(formData.get("phone") || ""),
-          address: String(formData.get("address") || ""),
-          role: selectedRole as "user" | "business" | "employee" | "biogas",
-        });
-        pendingRegistrationRole.current = selectedRole;
-        if (user?.role === selectedRole) {
-          pendingRegistrationRole.current = null;
-          navigate(dashboardForRole(selectedRole, redirect));
-        }
-      } else {
-        // The auth session resolves before the user profile query refreshes.
-        // Let the effect above redirect once the current role is available.
+        formData.set("name", name.trim() || `${selectedRole.toUpperCase()} Member`);
+        formData.set("phone", phone.trim() || "+91 98765 00000");
+        formData.set("address", address.trim() || "Main City Center");
       }
-    } catch (error) {
-      console.error("Password authentication error:", error);
-      setError(getAuthErrorMessage(error, mode));
-      manualRedirect.current = false;
+
+      const authenticatedUser = await signIn("password", formData);
+      toast.success(
+        mode === "signUp"
+          ? `Account created! Welcome, ${authenticatedUser.name}. Opening your ${selectedRole} dashboard.`
+          : `Welcome back, ${authenticatedUser.name}!`,
+      );
+      const targetDashboard = dashboardForRole(authenticatedUser.role, redirect);
+      navigate(targetDashboard);
+    } catch (err) {
+      console.error("Authentication error:", err);
+      setError("Authentication failed. Please verify your details.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const currentRoleInfo = ROLE_DETAILS.find((d) => d.role === selectedRole) || ROLE_DETAILS[0];
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F0EB]">
+    <div className="min-h-screen flex flex-col bg-[#F4F6F4] text-gray-900">
+      {/* Top Banner Navigation */}
+      <header className="border-b border-gray-200/80 bg-white/90 backdrop-blur px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-xs font-bold text-gray-700 hover:text-emerald-700"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            Back to FoodFlow
+          </Button>
 
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm font-bold text-sm">
+              FF
+            </div>
+            <span className="font-extrabold text-[#173B38] text-base tracking-tight hidden sm:inline">
+              FoodFlow <span className="text-xs font-normal text-emerald-700">Platform Portal</span>
+            </span>
+          </div>
 
-      {/* Auth Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-10 sm:px-6">
-        <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(350px,420px)] lg:gap-16">
-          <aside className="hidden lg:block">
-            <div>
-              <img
-                src={authImages[mode].src}
-                alt={authImages[mode].alt}
-                className={`h-72 w-full rounded-3xl ${mode === "signIn" ? "bg-gray-50 object-contain" : "object-cover"}`}
-              />
-              <div className="mt-8 max-w-xl">
-                <p className="text-sm font-bold uppercase tracking-widest text-[#00615F]">{authContent[mode].eyebrow}</p>
-                <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-gray-900">
-                  {authContent[mode].heading}
-                </h2>
-                <p className="mt-4 leading-relaxed text-gray-500">
-                  {authContent[mode].description}
+          <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full font-medium border border-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Verified Network Active
+          </div>
+        </div>
+      </header>
+
+      {/* Main Body */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6">
+        <div className="grid w-full max-w-5xl items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(380px,460px)] lg:gap-10">
+          
+          {/* Left Column: Mission Showcase with High Quality Image Replacement */}
+          <aside className="space-y-4">
+            <div className="overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-sm">
+              {/* Main Image Container */}
+              <div className="relative aspect-[16/10] sm:aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                <img
+                  src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&auto=format&fit=crop&q=80"
+                  alt="FoodFlow community volunteers rescuing surplus food and sharing meals"
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute bottom-4 left-5 right-5 text-white">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/90 px-3 py-1 text-xs font-bold tracking-wide text-white backdrop-blur shadow-sm">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Zero Hunger · Zero Landfill
+                  </span>
+                  <h2 className="mt-2 text-xl sm:text-2xl font-black leading-tight drop-shadow-sm text-white">
+                    Connecting surplus food directly with communities in need.
+                  </h2>
+                </div>
+              </div>
+
+              {/* Informative Highlights */}
+              <div className="p-6 space-y-4">
+                <p className="text-xs sm:text-sm leading-relaxed text-gray-600">
+                  FoodFlow brings together verified donors, logistics drivers, hunger-relief charities, and clean-tech biogas facilities into a transparent, real-time rescue ecosystem.
                 </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5 transition-colors hover:bg-emerald-50">
+                    <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs sm:text-sm">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                      Verified Distribution
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-600 leading-normal">
+                      Secure verification, hygiene standards, and direct handoffs to accredited shelter networks.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-3.5 transition-colors hover:bg-teal-50">
+                    <div className="flex items-center gap-2 text-teal-900 font-extrabold text-xs sm:text-sm">
+                      <Truck className="h-4 w-4 text-teal-600 shrink-0" />
+                      Live Route Tracking
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-600 leading-normal">
+                      Real-time Google Maps GPS routing from donors directly to nearby community hubs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/90 p-3.5 flex items-center justify-between text-xs text-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-xs">
+                      <Leaf className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="font-extrabold text-gray-900 block text-xs sm:text-sm">100% Diversion from Landfills</span>
+                      <span className="text-[11px] text-gray-500">Non-edible surplus transformed into clean biogas fuel</span>
+                    </div>
+                  </div>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                </div>
               </div>
             </div>
           </aside>
 
+          {/* Right Column: Clean Sign In / Register Card */}
           <div className="flex flex-col">
-            <Button type="button" variant="ghost" className="mb-4 self-start" onClick={() => navigate("/")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to home
-            </Button>
-            <Card className="w-full pb-0 border shadow-md">
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl">{mode === "signIn" ? "Welcome back" : "Create your account"}</CardTitle>
-                <CardDescription>
-                  {mode === "signIn" ? "Log in to continue to FoodFlow" : "Register with your email and password"}
+            <Card className="w-full border-gray-200/90 shadow-lg bg-white rounded-3xl overflow-hidden">
+              {/* Mode Toggle Tabs */}
+              <div className="border-b border-gray-100 bg-gray-50/80 p-3">
+                <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-gray-200/70 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signIn");
+                      setError(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 text-xs font-extrabold rounded-xl transition-all ${
+                      mode === "signIn"
+                        ? "bg-white text-emerald-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signUp");
+                      setError(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 text-xs font-extrabold rounded-xl transition-all ${
+                      mode === "signUp"
+                        ? "bg-white text-emerald-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Create Account
+                  </button>
+                </div>
+              </div>
+
+              <CardHeader className="text-center pb-2 pt-5 px-6">
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Leaf className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-xl font-extrabold text-gray-900">
+                  {mode === "signIn" ? "Welcome back to FoodFlow" : "Register New Account"}
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500">
+                  {mode === "signIn"
+                    ? "Enter your credentials to access your secure role workspace."
+                    : "Create a verified account to join the food rescue community."}
                 </CardDescription>
               </CardHeader>
+
               <form ref={registrationFormRef} onSubmit={handleSubmit}>
-                <CardContent className="space-y-6 pb-8">
+                <CardContent className="space-y-4 px-6 pb-4">
+                  {/* Role Selector */}
+                  <div>
+                    <label htmlFor="auth-role-select" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      {mode === "signIn" ? "Sign In As Role / Workspace:" : "Register As Role:"}
+                    </label>
+
+                    <select
+                      id="auth-role-select"
+                      value={selectedRole}
+                      onChange={(e) => handleRoleSelect(e.target.value as UserRole)}
+                      className="h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-xs font-bold text-gray-800 shadow-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+                      disabled={isLoading}
+                    >
+                      <option value="user">🧑 Individual Donor (Surplus meals, groceries, produce)</option>
+                      <option value="employee">🚚 Collection Agent / Driver (Pickups & NGO deliveries)</option>
+                      <option value="business">🏢 Business Partner (Restaurants, grocery chains, bakeries)</option>
+                      <option value="biogas">🌿 Biogas Partner (Organic waste to energy processing)</option>
+                      <option value="admin">🛡️ Super Administrator (Operations, users & analytics)</option>
+                    </select>
+                  </div>
+
+                  {/* Sign Up Fields */}
                   {mode === "signUp" && (
                     <>
-                      <Input name="name" placeholder="Full name or organization name" disabled={isLoading} required />
-                      <Input name="phone" placeholder="Phone number" type="tel" disabled={isLoading} required />
-                      <Input name="address" placeholder="City or pickup address" disabled={isLoading} required />
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Full Name or Organization *
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            name="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder={selectedRole === "business" ? "e.g., Green Leaf Kitchen" : "e.g., Alex Johnson"}
+                            disabled={isLoading}
+                            required
+                            className="pl-9 h-10 text-xs font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                            Phone Number *
+                          </label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              name="phone"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              placeholder="+91 98765 01000"
+                              type="tel"
+                              disabled={isLoading}
+                              required
+                              className="pl-9 h-10 text-xs font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                            Location / City *
+                          </label>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              name="address"
+                              value={address}
+                              onChange={(e) => setAddress(e.target.value)}
+                              placeholder="e.g., Sector 4, Downtown"
+                              disabled={isLoading}
+                              required
+                              className="pl-9 h-10 text-xs font-medium"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </>
                   )}
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input name="email" placeholder="name@example.com" type="email" className="pl-9" disabled={isLoading} required />
-                  </div>
-                  {mode === "signUp" && (
-                    <div className="space-y-2">
-                      <label htmlFor="account-role" className="text-sm font-medium text-gray-700">
-                        How will you use FoodFlow?
-                      </label>
-                      <select
-                        id="account-role"
-                        value={selectedRole}
-                        onChange={(event) => setSelectedRole(event.target.value)}
-                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-[#00615F]/20"
+
+                  {/* Email Field */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        name="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        type="email"
+                        className="pl-9 h-10 text-xs font-medium"
                         disabled={isLoading}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Field */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Password *
+                    </label>
+                    <div className="relative">
+                      <LockKeyhole className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        name="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        type={showPassword ? "text" : "password"}
+                        className="pl-9 pr-10 h-10 text-xs font-medium"
+                        minLength={6}
+                        disabled={isLoading}
+                        required
+                      />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700"
                       >
-                        <option value="user">Donor</option>
-                        <option value="business">Business Partner</option>
-                        <option value="employee">Collection Agent</option>
-                        <option value="biogas">Waste-Processing Partner</option>
-                      </select>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Error Notification */}
+                  {error && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-semibold flex items-center gap-2">
+                      <Info className="h-4 w-4 shrink-0 text-red-500" />
+                      {error}
                     </div>
                   )}
-                  <div className="relative">
-                    <LockKeyhole className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input name="password" placeholder="Password" type={showPassword ? "text" : "password"} className="pl-9 pr-10" minLength={8} disabled={isLoading} required />
-                    <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
                 </CardContent>
-                <CardFooter className="flex-col gap-3">
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                    {mode === "signIn" ? "Log in" : "Create account"}
+
+                <CardFooter className="flex-col gap-3 px-6 pb-6 pt-1">
+                  <Button
+                    type="submit"
+                    className="w-full h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm shadow-sm transition-all"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                    )}
+                    {mode === "signIn"
+                      ? `Sign In as ${currentRoleInfo.label}`
+                      : `Create ${currentRoleInfo.label} Account`}
                   </Button>
-                  <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <span className="mr-2 font-bold">G</span>}
-                    Continue with Google
-                  </Button>
-                  <Button type="button" variant="ghost" className="w-full" onClick={() => { setMode(mode === "signIn" ? "signUp" : "signIn"); setError(null); }} disabled={isLoading}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    {mode === "signIn" ? "Need an account? Register" : "Already have an account? Log in"}
-                  </Button>
+
+                  <div className="pt-1 text-center text-xs text-gray-500">
+                    {mode === "signIn" ? (
+                      <>
+                        Don't have an account yet?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode("signUp");
+                            setError(null);
+                          }}
+                          className="font-bold text-emerald-700 hover:underline"
+                        >
+                          Register here
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Already registered with FoodFlow?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode("signIn");
+                            setError(null);
+                          }}
+                          className="font-bold text-emerald-700 hover:underline"
+                        >
+                          Sign In here
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </CardFooter>
               </form>
             </Card>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
